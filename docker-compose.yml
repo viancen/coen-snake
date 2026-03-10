@@ -1,0 +1,13 @@
+services:
+  coen-snake:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - snake-data:/data
+    environment:
+      - PORT=3000
+      - SQLITE_DB_PATH=/data/scores.db
+
+volumes:
+  snake-data:

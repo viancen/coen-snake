@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coen Snake – Muurbesturing & Mohawk</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🐍 Coen Snake</h1>
+      <p class="subtitle">Stuur met je muis of pijltjestoetsen (↑↓←→). De kop heeft een rode mohawk!</p>
+    </header>
+
+    <div class="game-area">
+      <canvas id="gameCanvas" width="640" height="480" tabindex="0"></canvas>
+      <div id="overlay">
+        <div class="overlay-content">
+          <h2 id="overlayTitle">Klaar om te spelen</h2>
+          <p id="overlayMessage">Plaats je cursor in het speelveld en beweeg om te starten.</p>
+          <div class="name-input">
+            <label for="playerName">Naam (voor topscores):</label>
+            <input type="text" id="playerName" maxlength="50" placeholder="Jouw naam" value="">
+          </div>
+          <button id="startBtn">Start spel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud">
+      <div class="score-row">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Top: <strong id="highScore">0</strong></span>
+      </div>
+    </div>
+
+    <section class="scores-section">
+      <h3>🏆 Topscores</h3>
+      <ol id="topScores"></ol>
+      <p class="hint">Score wordt automatisch opgeslagen bij game over.</p>
+    </section>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

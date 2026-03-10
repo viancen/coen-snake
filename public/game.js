@@ -89,6 +89,8 @@ const MIN_TICK_MS = 90;  // minimum ms per move (was 60, now slightly slower cap
   let invaderLastTick = 0;
   let invaderMinX = 0;
   let invaderMaxX = 0;
+  const CHEAT_CODE = 'idkfa';
+  let cheatBuffer = '';
 
   function loadImages(cb) {
     const img1 = new Image();
@@ -594,6 +596,23 @@ const MIN_TICK_MS = 90;  // minimum ms per move (was 60, now slightly slower cap
   });
 
   document.addEventListener('keydown', e => {
+    if (e.key.length === 1 && e.key.toLowerCase().match(/[a-z]/)) {
+      cheatBuffer = (cheatBuffer + e.key.toLowerCase()).slice(-CHEAT_CODE.length);
+      if (cheatBuffer === CHEAT_CODE) {
+        cheatBuffer = '';
+        if (running && level < LEVELS.length) {
+          const newLevel = level + 1;
+          score = LEVELS[newLevel - 1].minScore;
+          scoreEl.textContent = score;
+          if (score > highScore) {
+            highScore = score;
+            highScoreEl.textContent = highScore;
+          }
+          switchToLevel(newLevel);
+        }
+        return;
+      }
+    }
     if (!running) return;
     if (gameMode === 'invaders') {
       if (e.code === 'Space') {

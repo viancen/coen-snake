@@ -1,24 +1,42 @@
 const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// SQLite database (file in project root or /data in Docker)
-const dbPath = process.env.SQLITE_DB_PATH || path.join(__dirname, 'scores.db');
-const db = new Database(dbPath);
+// SQLite: use env path, or a "data" folder (writable on most servers)
+const defaultDir = path.join(__dirname, 'data');
+const dbPath = process.env.SQLITE_DB_PATH || path.join(defaultDir, 'scores.db');
 
-// Create scores table if not exists
-db.exec(`
-  CREATE TABLE IF NOT EXISTS scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    player_name TEXT NOT NULL,
-    score INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE INDEX IF NOT EXISTS idx_score ON scores(score DESC);
-`);
+// Ensure directory exists and is writable (for Laravel Forge / shared hosting)
+if (!process.env.SQLITE_DB_PATH) {
+  try {
+    fs.mkdirSync(defaultDir, { recursive: true });
+  } catch (e) {
+    console.error('Could not create data dir:', e.message);
+  }
+}
+
+let db;
+try {
+  db = new Database(dbPath);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_name TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_score ON scores(score DESC);
+  `);
+  console.log('SQLite database ready at', dbPath);
+} catch (e) {
+  console.error('SQLite failed to open:', e.message);
+  console.error('Ensure the directory is writable. Set SQLITE_DB_PATH to a writable path if needed.');
+  process.exit(1);
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));

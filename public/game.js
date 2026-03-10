@@ -7,18 +7,30 @@
   const startBtn = document.getElementById('startBtn');
   const scoreEl = document.getElementById('score');
   const highScoreEl = document.getElementById('highScore');
+  const levelEl = document.getElementById('level');
   const topScoresList = document.getElementById('topScores');
   const playerNameInput = document.getElementById('playerName');
 
   const CELL = 20;
-  const COLS = Math.floor(640 / CELL);
-  const ROWS = Math.floor(480 / CELL);
+  const LEVEL1_SIZE = { w: 640, h: 480 };
+  const LEVEL2_SIZE = { w: 960, h: 720 };
   const BASE_SPEED = 120;
   const MOHAWK_SPIKES = 5;
   const MOHAWK_COLOR = '#e63946';
   const HEAD_COLOR = '#2a9d8f';
   const BODY_COLOR = '#264653';
   const FOOD_COLOR = '#f4a261';
+  const SCORE_TO_LEVEL2 = 150;
+
+  const LEVEL1_BG = 'bgs/images.jpeg';
+  const LEVEL2_BGS = [
+    'bgs/level2/40543072_001_3116.jpg',
+    'bgs/level2/40543072_009_565d.jpg',
+    'bgs/level2/43196569_046_e3d3.jpg',
+    'bgs/level2/90025385_189_e128.jpg',
+    'bgs/level2/90025385_094_2234.jpg',
+    'bgs/level2/10960988_086_9a29.jpg',
+  ];
 
   const ARROW_KEYS = {
     ArrowUp: { dx: 0, dy: -1 },
@@ -29,15 +41,49 @@
 
   let mouse = { x: 0, y: 0 };
   let snake = [];
-  let food = { x: 0, y: 0 };
+  let foods = [];
   let direction = { dx: 1, dy: 0 };
   let nextDirection = { dx: 1, dy: 0 };
   let useKeyboard = false;
   let score = 0;
   let highScore = 0;
+  let level = 1;
   let gameLoopId = null;
   let lastTick = 0;
   let running = false;
+  let COLS = Math.floor(LEVEL1_SIZE.w / CELL);
+  let ROWS = Math.floor(LEVEL1_SIZE.h / CELL);
+
+  let bgImageLevel1 = null;
+  let bgImagesLevel2 = [];
+  let currentLevel2Bg = null;
+  let currentLevel2BgImage = null;
+
+  function loadImages(cb) {
+    const img1 = new Image();
+    img1.onload = function () {
+      bgImageLevel1 = img1;
+      let loaded = 0;
+      if (LEVEL2_BGS.length === 0) return cb();
+      LEVEL2_BGS.forEach((src) => {
+        const img = new Image();
+        img.onload = function () {
+          bgImagesLevel2.push({ src, img });
+          loaded++;
+          if (loaded === LEVEL2_BGS.length) cb();
+        };
+        img.onerror = function () {
+          loaded++;
+          if (loaded === LEVEL2_BGS.length) cb();
+        };
+        img.src = src;
+      });
+    };
+    img1.onerror = function () {
+      cb();
+    };
+    img1.src = LEVEL1_BG;
+  }
 
   function getMouseCell() {
     const rect = canvas.getBoundingClientRect();
@@ -105,15 +151,47 @@
     nextDirection = { dx: 1, dy: 0 };
   }
 
-  function placeFood() {
-    const free = [];
+  function getFreeCells() {
     const set = new Set(snake.map(s => `${s.x},${s.y}`));
+    foods.forEach((f) => set.add(`${f.x},${f.y}`));
+    const free = [];
     for (let x = 0; x < COLS; x++)
       for (let y = 0; y < ROWS; y++)
         if (!set.has(`${x},${y}`)) free.push({ x, y });
+    return free;
+  }
+
+  function placeOneFood() {
+    const free = getFreeCells();
     if (free.length === 0) return;
     const f = free[Math.floor(Math.random() * free.length)];
-    food = { x: f.x, y: f.y };
+    foods.push({ x: f.x, y: f.y });
+  }
+
+  function placeFoods() {
+    const want = level === 1 ? 1 : 2;
+    foods = [];
+    for (let i = 0; i < want; i++) placeOneFood();
+  }
+
+  function pickRandomLevel2Bg() {
+    if (bgImagesLevel2.length === 0) return;
+    const idx = Math.floor(Math.random() * bgImagesLevel2.length);
+    currentLevel2Bg = bgImagesLevel2[idx];
+    currentLevel2BgImage = currentLevel2Bg ? currentLevel2Bg.img : null;
+  }
+
+  function drawBackground() {
+    if (level === 1 && bgImageLevel1) {
+      ctx.drawImage(bgImageLevel1, 0, 0, canvas.width, canvas.height);
+      return;
+    }
+    if (level === 2 && currentLevel2BgImage) {
+      ctx.drawImage(currentLevel2BgImage, 0, 0, canvas.width, canvas.height);
+      return;
+    }
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
   function drawMohawk(head, dir) {
@@ -164,16 +242,30 @@
     });
   }
 
-  function drawFood() {
-    const x = food.x * CELL + CELL / 2;
-    const y = food.y * CELL + CELL / 2;
-    ctx.fillStyle = FOOD_COLOR;
-    ctx.beginPath();
-    ctx.arc(x, y, CELL / 2 - 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#e76f51';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+  function drawFoods() {
+    foods.forEach((food) => {
+      const x = food.x * CELL + CELL / 2;
+      const y = food.y * CELL + CELL / 2;
+      ctx.fillStyle = FOOD_COLOR;
+      ctx.beginPath();
+      ctx.arc(x, y, CELL / 2 - 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#e76f51';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+  }
+
+  function switchToLevel2() {
+    level = 2;
+    if (levelEl) levelEl.textContent = '2';
+    canvas.width = LEVEL2_SIZE.w;
+    canvas.height = LEVEL2_SIZE.h;
+    COLS = Math.floor(LEVEL2_SIZE.w / CELL);
+    ROWS = Math.floor(LEVEL2_SIZE.h / CELL);
+    initSnake();
+    placeFoods();
+    pickRandomLevel2Bg();
   }
 
   function tick(now) {
@@ -202,14 +294,26 @@
     }
 
     snake.unshift({ x: nx, y: ny });
-    if (nx === food.x && ny === food.y) {
+    const eatenIdx = foods.findIndex((f) => f.x === nx && f.y === ny);
+    if (eatenIdx !== -1) {
       score += 10;
       scoreEl.textContent = score;
       if (score > highScore) {
         highScore = score;
         highScoreEl.textContent = highScore;
       }
-      placeFood();
+      if (level === 2) {
+        pickRandomLevel2Bg();
+        foods.splice(eatenIdx, 1);
+        placeOneFood();
+      } else {
+        foods = [];
+        if (score >= SCORE_TO_LEVEL2) {
+          switchToLevel2();
+        } else {
+          placeFoods();
+        }
+      }
     } else {
       snake.pop();
     }
@@ -219,9 +323,8 @@
   }
 
   function draw() {
-    ctx.fillStyle = '#0d1117';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawFood();
+    drawBackground();
+    drawFoods();
     drawSnake();
   }
 
@@ -274,8 +377,17 @@
   }
 
   function start() {
+    level = 1;
+    if (levelEl) levelEl.textContent = '1';
+    canvas.width = LEVEL1_SIZE.w;
+    canvas.height = LEVEL1_SIZE.h;
+    COLS = Math.floor(LEVEL1_SIZE.w / CELL);
+    ROWS = Math.floor(LEVEL1_SIZE.h / CELL);
     initSnake();
-    placeFood();
+    foods = [];
+    placeFoods();
+    currentLevel2Bg = null;
+    currentLevel2BgImage = null;
     score = 0;
     scoreEl.textContent = '0';
     highScoreEl.textContent = highScore;
@@ -318,5 +430,6 @@
   startBtn.addEventListener('click', start);
 
   overlay.classList.remove('hidden');
-  loadTopScores();
+  if (levelEl) levelEl.textContent = '1';
+  loadImages(() => loadTopScores());
 })();

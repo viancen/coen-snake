@@ -56,7 +56,7 @@ De SQLite-database staat in het volume `snake-data` op het pad `/data/scores.db`
 
 4. Open [http://localhost:3000](http://localhost:3000).
 
-De database wordt lokaal aangemaakt als `scores.db` in de projectmap (tenzij je `SQLITE_DB_PATH` aanpast).
+De database wordt lokaal aangemaakt als `data/scores.db` (tenzij je `SQLITE_DB_PATH` aanpast).
 
 ---
 
@@ -126,6 +126,40 @@ Je zou iets moeten zien als: `Coen Snake server running on http://0.0.0.0:3000`.
 3. Druk Enter. De Coen Snake-pagina zou moeten laden.
 
 Om te stoppen: ga terug naar het terminalvenster en druk **Ctrl+C**. Daarna kun je het venster sluiten.
+
+## Deployen op Laravel Forge (scores opslaan)
+
+Dit is een **Node.js**-app met **SQLite**, geen Laravel. De app slaat topscores op in een SQLite-bestand. Op een server (bijv. via Laravel Forge) moet de **map waar dat bestand komt schrijfbaar** zijn voor de user die de Node-app draait (meestal `forge`).
+
+### Wat je op Forge moet doen
+
+1. **Schrijfbare map voor de database**
+   - De app gebruikt standaard de map `data` in de projectroot en maakt daar `data/scores.db` aan.
+   - Zorg dat die map bestaat en schrijfbaar is voor de `forge` user:
+     ```bash
+     cd /home/forge/jouw-site.nl   # of jouw projectpad
+     mkdir -p data
+     chown forge:forge data
+     chmod 755 data
+     ```
+   - Bij elke deploy moet `data` blijven bestaan. Voeg `data/` toe aan je deploy-script **niet** (de map moet blijven), of maak hem in het script aan:
+     ```bash
+     mkdir -p data && chown forge:forge data
+     ```
+
+2. **Optioneel: vaste locatie via environment**
+   - In Forge: Site → Environment (`.env` of Environment Variables).
+   - Zet bijvoorbeeld:
+     ```
+     SQLITE_DB_PATH=/home/forge/jouw-site.nl/data/scores.db
+     ```
+   - Zorg dat het pad een map is die bestaat en schrijfbaar is (zoals hierboven).
+
+3. **Node-app draaien**
+   - Gebruik bijv. PM2 of de Forge “Node” setup, met startcommando: `node server.js` of `npm start`, vanuit de projectroot.
+   - De user die de app start (meestal `forge`) moet schrijfrechten hebben op `data/` (of op de map van `SQLITE_DB_PATH`).
+
+Als de database niet kan schrijven, stopt de server bij opstarten met een foutmelding. Controleer dan de rechten op de map en eventueel de Forge-logs.
 
 ## API (topscores)
 

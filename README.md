@@ -1,6 +1,6 @@
-# Coen Snake
+# Nasty Snake
 
-Een klassiek Snake-spel in JavaScript. Bestuur de slang met je **muis** (cursor): de slang beweegt in de richting van je cursor. De kop van de slang heeft een **rode mohawk**. Topscores worden opgeslagen in een **SQLite**-database en het geheel draait in een **Docker**-container.
+Een klassiek Snake-spel in JavaScript (**18+**). Bij het openen moet je bevestigen dat je 18 jaar of ouder bent. Bestuur de slang met je **muis** of **pijltjestoetsen**. De kop heeft een **rode mohawk**. Er zijn **5 levels** (meer punten = groter veld en meer voedsel tegelijk). Topscores worden opgeslagen in een **SQLite**-database. Draait in een **Docker**-container of lokaal met Node.js.
 
 ## Vereisten
 
@@ -20,9 +20,9 @@ Een klassiek Snake-spel in JavaScript. Bestuur de slang met je **muis** (cursor)
 3. **Open in je browser:** [http://localhost:3000](http://localhost:3000)
 
 4. **Spelen:**
-   - Klik op **Start spel** en beweeg je muis in het speelveld.
-   - De slang volgt de richting van je cursor (binnen het rooster: omhoog, omlaag, links, rechts).
-   - Eet het oranje voedsel om te groeien en punten te scoren.
+   - Bevestig dat je 18+ bent om de site te betreden.
+   - Klik op **Start spel** en stuur met muis of pijltjestoetsen.
+   - Eet het oranje voedsel om te groeien en punten te scoren. Bij 150, 300, 450 en 600 punten ga je naar het volgende level (groter veld, meer voedsel).
    - Bij game over wordt je score automatisch opgeslagen; de topscores staan onder het speelveld.
 
 Om te stoppen: `Ctrl+C` in de terminal. De database (topscores) blijft bewaard in een Docker-volume.
@@ -87,15 +87,15 @@ Als je nog nooit Node.js of de terminal hebt gebruikt, volg dan deze stappen.
 **Op Mac:**
 
 1. Open **Terminal**: druk `Cmd + Spatie`, typ `Terminal` en druk Enter.
-2. Ga naar de map van het project. Typ `cd` (met een spatie) en sleep daarna de map **coen-snake** vanuit de Finder naar het Terminal-venster. Druk Enter.
-   - Of typ handmatig bijvoorbeeld: `cd ~/Documents/Development/coen-snake` (pas het pad aan als je project ergens anders staat).
+2. Ga naar de map van het project. Typ `cd` (met een spatie) en sleep daarna de map **nasty-snake** vanuit de Finder naar het Terminal-venster. Druk Enter.
+   - Of typ handmatig bijvoorbeeld: `cd ~/Documents/Development/nasty-snake` (pas het pad aan als je project ergens anders staat).
 
 **Op Windows:**
 
 1. Open **Command Prompt** of **PowerShell**: druk op de Windows-toets, typ `cmd` of `powershell` en druk Enter.
 2. Ga naar de map van het project, bijvoorbeeld:
    ```text
-   cd C:\Users\JouwNaam\Documents\Development\coen-snake
+   cd C:\Users\JouwNaam\Documents\Development\nasty-snake
    ```
    (Vervang `JouwNaam` door je gebruikersnaam en pas het pad aan als je project ergens anders staat.)
 
@@ -117,13 +117,13 @@ Typ:
 npm start
 ```
 
-Je zou iets moeten zien als: `Coen Snake server running on http://0.0.0.0:3000`. Laat dit venster **open** staan zolang je het spel wilt spelen.
+Je zou iets moeten zien als: `Nasty Snake server running on http://0.0.0.0:3000`. Laat dit venster **open** staan zolang je het spel wilt spelen.
 
 ### Stap 5: Het spel openen in je browser
 
 1. Open je webbrowser (Chrome, Edge, Firefox, Safari, …).
 2. Ga in de adresbalk naar: **http://localhost:3000**
-3. Druk Enter. De Coen Snake-pagina zou moeten laden.
+3. Druk Enter. De Nasty Snake-pagina zou moeten laden.
 
 Om te stoppen: ga terug naar het terminalvenster en druk **Ctrl+C**. Daarna kun je het venster sluiten.
 

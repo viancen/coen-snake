@@ -12,15 +12,21 @@
   const playerNameInput = document.getElementById('playerName');
 
   const CELL = 20;
-  const LEVEL1_SIZE = { w: 640, h: 480 };
-  const LEVEL2_SIZE = { w: 960, h: 720 };
   const BASE_SPEED = 120;
   const MOHAWK_SPIKES = 5;
   const MOHAWK_COLOR = '#e63946';
   const HEAD_COLOR = '#2a9d8f';
   const BODY_COLOR = '#264653';
   const FOOD_COLOR = '#f4a261';
-  const SCORE_TO_LEVEL2 = 150;
+
+  // 5 levels: minScore, grid size, food count
+  const LEVELS = [
+    { minScore: 0, w: 640, h: 480, foodCount: 1 },
+    { minScore: 150, w: 960, h: 720, foodCount: 2 },
+    { minScore: 300, w: 960, h: 720, foodCount: 3 },
+    { minScore: 450, w: 960, h: 720, foodCount: 4 },
+    { minScore: 600, w: 960, h: 720, foodCount: 5 },
+  ];
 
   const LEVEL1_BG = 'bgs/images.jpeg';
   const LEVEL2_BGS = [
@@ -51,8 +57,8 @@
   let gameLoopId = null;
   let lastTick = 0;
   let running = false;
-  let COLS = Math.floor(LEVEL1_SIZE.w / CELL);
-  let ROWS = Math.floor(LEVEL1_SIZE.h / CELL);
+  let COLS = Math.floor(LEVELS[0].w / CELL);
+  let ROWS = Math.floor(LEVELS[0].h / CELL);
 
   let bgImageLevel1 = null;
   let bgImagesLevel2 = [];
@@ -168,8 +174,13 @@
     foods.push({ x: f.x, y: f.y });
   }
 
+  function getLevelConfig(levelNum) {
+    return LEVELS[Math.min(levelNum - 1, LEVELS.length - 1)] || LEVELS[0];
+  }
+
   function placeFoods() {
-    const want = level === 1 ? 1 : 2;
+    const cfg = getLevelConfig(level);
+    const want = cfg.foodCount;
     foods = [];
     for (let i = 0; i < want; i++) placeOneFood();
   }
@@ -186,7 +197,7 @@
       ctx.drawImage(bgImageLevel1, 0, 0, canvas.width, canvas.height);
       return;
     }
-    if (level === 2 && currentLevel2BgImage) {
+    if (level >= 2 && currentLevel2BgImage) {
       ctx.drawImage(currentLevel2BgImage, 0, 0, canvas.width, canvas.height);
       return;
     }
@@ -256,16 +267,28 @@
     });
   }
 
-  function switchToLevel2() {
-    level = 2;
-    if (levelEl) levelEl.textContent = '2';
-    canvas.width = LEVEL2_SIZE.w;
-    canvas.height = LEVEL2_SIZE.h;
-    COLS = Math.floor(LEVEL2_SIZE.w / CELL);
-    ROWS = Math.floor(LEVEL2_SIZE.h / CELL);
+  function getLevelFromScore(s) {
+    let lvl = 1;
+    for (let i = LEVELS.length - 1; i >= 0; i--) {
+      if (s >= LEVELS[i].minScore) {
+        lvl = i + 1;
+        break;
+      }
+    }
+    return lvl;
+  }
+
+  function switchToLevel(newLevel) {
+    level = newLevel;
+    if (levelEl) levelEl.textContent = String(level);
+    const cfg = getLevelConfig(level);
+    canvas.width = cfg.w;
+    canvas.height = cfg.h;
+    COLS = Math.floor(cfg.w / CELL);
+    ROWS = Math.floor(cfg.h / CELL);
     initSnake();
     placeFoods();
-    pickRandomLevel2Bg();
+    if (level >= 2) pickRandomLevel2Bg();
   }
 
   function tick(now) {
@@ -302,17 +325,16 @@
         highScore = score;
         highScoreEl.textContent = highScore;
       }
-      if (level === 2) {
+      const newLevel = getLevelFromScore(score);
+      if (newLevel > level) {
+        switchToLevel(newLevel);
+      } else if (level >= 2) {
         pickRandomLevel2Bg();
         foods.splice(eatenIdx, 1);
         placeOneFood();
       } else {
         foods = [];
-        if (score >= SCORE_TO_LEVEL2) {
-          switchToLevel2();
-        } else {
-          placeFoods();
-        }
+        placeFoods();
       }
     } else {
       snake.pop();
@@ -379,10 +401,11 @@
   function start() {
     level = 1;
     if (levelEl) levelEl.textContent = '1';
-    canvas.width = LEVEL1_SIZE.w;
-    canvas.height = LEVEL1_SIZE.h;
-    COLS = Math.floor(LEVEL1_SIZE.w / CELL);
-    ROWS = Math.floor(LEVEL1_SIZE.h / CELL);
+    const cfg = getLevelConfig(1);
+    canvas.width = cfg.w;
+    canvas.height = cfg.h;
+    COLS = Math.floor(cfg.w / CELL);
+    ROWS = Math.floor(cfg.h / CELL);
     initSnake();
     foods = [];
     placeFoods();
@@ -429,7 +452,9 @@
 
   startBtn.addEventListener('click', start);
 
-  overlay.classList.remove('hidden');
+  if (document.getElementById('mainContent') && !document.getElementById('mainContent').classList.contains('hidden')) {
+    overlay.classList.remove('hidden');
+  }
   if (levelEl) levelEl.textContent = '1';
   loadImages(() => loadTopScores());
 })();

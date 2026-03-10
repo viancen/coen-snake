@@ -3,46 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coen Snake – Muurbesturing & Mohawk</title>
+  <title>Nasty Snake – 18+</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🐍 Coen Snake</h1>
-      <p class="subtitle">Stuur met je muis of pijltjestoetsen (↑↓←→). De kop heeft een rode mohawk!</p>
-    </header>
+  <!-- Age gate: must confirm 18+ before entering -->
+  <div id="ageGate" class="age-gate">
+    <div class="age-gate-content">
+      <h1>🐍 Nasty Snake</h1>
+      <p class="age-gate-question">Ben je 18 jaar of ouder?</p>
+      <p class="age-gate-disclaimer">Deze content is alleen bedoeld voor meerderjarigen.</p>
+      <div class="age-gate-buttons">
+        <button id="ageYes" class="age-btn age-btn-yes">Ja, ik ben 18 of ouder</button>
+        <button id="ageNo" class="age-btn age-btn-no">Nee</button>
+      </div>
+      <p id="ageDenied" class="age-denied hidden">Je moet 18 jaar of ouder zijn om door te gaan.</p>
+    </div>
+  </div>
 
-    <div class="game-area">
-      <canvas id="gameCanvas" width="640" height="480" tabindex="0"></canvas>
-      <div id="overlay">
-        <div class="overlay-content">
-          <h2 id="overlayTitle">Klaar om te spelen</h2>
-          <p id="overlayMessage">Plaats je cursor in het speelveld en beweeg om te starten.</p>
-          <div class="name-input">
-            <label for="playerName">Naam (voor topscores):</label>
-            <input type="text" id="playerName" maxlength="50" placeholder="Jouw naam" value="">
+  <div id="mainContent" class="main-content hidden">
+    <div class="container">
+      <header>
+        <h1>🐍 Nasty Snake</h1>
+        <p class="subtitle">Stuur met je muis of pijltjestoetsen (↑↓←→). De kop heeft een rode mohawk!</p>
+      </header>
+
+      <div class="game-area">
+        <canvas id="gameCanvas" width="640" height="480" tabindex="0"></canvas>
+        <div id="overlay">
+          <div class="overlay-content">
+            <h2 id="overlayTitle">Klaar om te spelen</h2>
+            <p id="overlayMessage">Plaats je cursor in het speelveld en beweeg om te starten.</p>
+            <div class="name-input">
+              <label for="playerName">Naam (voor topscores):</label>
+              <input type="text" id="playerName" maxlength="50" placeholder="Jouw naam" value="">
+            </div>
+            <button id="startBtn">Start spel</button>
           </div>
-          <button id="startBtn">Start spel</button>
         </div>
       </div>
-    </div>
 
-    <div class="hud">
-      <div class="score-row">
-        <span>Score: <strong id="score">0</strong></span>
-        <span>Level: <strong id="level">1</strong></span>
-        <span>Top: <strong id="highScore">0</strong></span>
+      <div class="hud">
+        <div class="score-row">
+          <span>Score: <strong id="score">0</strong></span>
+          <span>Level: <strong id="level">1</strong></span>
+          <span>Top: <strong id="highScore">0</strong></span>
+        </div>
       </div>
-    </div>
 
-    <section class="scores-section">
-      <h3>🏆 Topscores</h3>
-      <ol id="topScores"></ol>
-      <p class="hint">Score wordt automatisch opgeslagen bij game over.</p>
-    </section>
+      <section class="scores-section">
+        <h3>🏆 Topscores</h3>
+        <ol id="topScores"></ol>
+        <p class="hint">Score wordt automatisch opgeslagen bij game over.</p>
+      </section>
+    </div>
   </div>
 
   <script src="game.js"></script>
+  <script>
+    (function () {
+      const AGE_VERIFIED_KEY = 'nastySnakeAgeVerified';
+      const ageGate = document.getElementById('ageGate');
+      const mainContent = document.getElementById('mainContent');
+      const ageYes = document.getElementById('ageYes');
+      const ageNo = document.getElementById('ageNo');
+      const ageDenied = document.getElementById('ageDenied');
+
+      function enterSite() {
+        try { sessionStorage.setItem(AGE_VERIFIED_KEY, '1'); } catch (e) {}
+        ageGate.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+      }
+
+      function denyEntry() {
+        ageDenied.classList.remove('hidden');
+        ageNo.disabled = true;
+      }
+
+      if (sessionStorage.getItem(AGE_VERIFIED_KEY) === '1') {
+        enterSite();
+      } else {
+        ageYes.addEventListener('click', enterSite);
+        ageNo.addEventListener('click', denyEntry);
+      }
+    })();
+  </script>
 </body>
 </html>

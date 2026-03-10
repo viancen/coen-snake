@@ -1,7 +1,7 @@
 {
-  "name": "coen-snake",
+  "name": "nasty-snake",
   "version": "1.0.0",
-  "description": "Snake game with mouse control, red mohawk, and SQLite topscores",
+  "description": "Nasty Snake – 18+ Snake game with mouse/keyboard, red mohawk, 5 levels, SQLite topscores",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

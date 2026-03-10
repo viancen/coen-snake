@@ -129,11 +129,46 @@ Om te stoppen: ga terug naar het terminalvenster en druk **Ctrl+C**. Daarna kun 
 
 ## Deployen op Laravel Forge (scores opslaan)
 
-Dit is een **Node.js**-app met **SQLite**, geen Laravel. De app slaat topscores op in een SQLite-bestand. Op een server (bijv. via Laravel Forge) moet de **map waar dat bestand komt schrijfbaar** zijn voor de user die de Node-app draait (meestal `forge`).
+Dit is een **Node.js**-app met **SQLite**, geen Laravel. Alle verkeer (inclusief `/api/scores`) moet naar de **Node-server** gaan, niet naar een PHP- of static-website-setup.
 
-### Wat je op Forge moet doen
+### Waarom krijg ik 404 op /api/scores?
 
-1. **Schrijfbare map voor de database**
+Forge staat vaak standaard zo ingesteld dat Nginx bestanden uit de map `public` serveert (Laravel-stijl). Dan bestaat het pad `/api/scores` niet als bestand en krijg je **404**. De Node-app moet **als proces draaien** en Nginx moet **alle requests naar dat proces sturen** (reverse proxy).
+
+### 1. Nginx: proxy naar Node (belangrijk)
+
+De Node-app luistert op een poort (bijv. **3000**). Nginx moet al het verkeer voor je domein naar die poort doorsturen.
+
+- Ga in Forge naar je **Site** → **Files** → **Edit Nginx Configuration** (of de plek waar je de server block bewerkt).
+- Zorg dat de `location /` (of de hele server block) **niet** alleen `root`/`public` gebruikt voor de app, maar **proxy** naar Node. Voorbeeld:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+(Voeg dit toe in je bestaande `server { ... }` block, of vervang de bestaande `location /` door dit. Gebruik de juiste `server_name` voor jouw domein.)
+
+- Vervang **3000** als je in je Node-app (of Environment) een andere `PORT` gebruikt.
+- Sla op en voer in Forge **"Restart Nginx"** uit (of equivalent).
+
+Daarna gaan alle requests (inclusief `/api/scores`) naar de Node-app en zou de 404 weg moeten zijn.
+
+### 2. Node-app laten draaien (PM2)
+
+- In Forge: **Site** → **Daemons** (of **Processes**), of gebruik op de server PM2.
+- Startcommando (uit de **projectroot**, niet uit `public`):  
+  `node server.js`  
+  of:  
+  `npm start`
+- Laat de app luisteren op dezelfde poort als in de Nginx-config (bijv. 3000). Die poort kun je instellen via Environment: `PORT=3000`.
+
+### 3. Schrijfbare map voor de database
    - De app gebruikt standaard de map `data` in de projectroot en maakt daar `data/scores.db` aan.
    - Zorg dat die map bestaat en schrijfbaar is voor de `forge` user:
      ```bash
@@ -142,22 +177,15 @@ Dit is een **Node.js**-app met **SQLite**, geen Laravel. De app slaat topscores 
      chown forge:forge data
      chmod 755 data
      ```
-   - Bij elke deploy moet `data` blijven bestaan. Voeg `data/` toe aan je deploy-script **niet** (de map moet blijven), of maak hem in het script aan:
+   - Bij elke deploy moet `data` blijven bestaan. Voeg in je deploy-script toe:
      ```bash
      mkdir -p data && chown forge:forge data
      ```
 
-2. **Optioneel: vaste locatie via environment**
+4. **Optioneel: vaste locatie via environment**
    - In Forge: Site → Environment (`.env` of Environment Variables).
-   - Zet bijvoorbeeld:
-     ```
-     SQLITE_DB_PATH=/home/forge/jouw-site.nl/data/scores.db
-     ```
-   - Zorg dat het pad een map is die bestaat en schrijfbaar is (zoals hierboven).
-
-3. **Node-app draaien**
-   - Gebruik bijv. PM2 of de Forge “Node” setup, met startcommando: `node server.js` of `npm start`, vanuit de projectroot.
-   - De user die de app start (meestal `forge`) moet schrijfrechten hebben op `data/` (of op de map van `SQLITE_DB_PATH`).
+   - Zet bijvoorbeeld: `SQLITE_DB_PATH=/home/forge/jouw-site.nl/data/scores.db`
+   - De user die de app start (meestal `forge`) moet schrijfrechten hebben op die map.
 
 Als de database niet kan schrijven, stopt de server bij opstarten met een foutmelding. Controleer dan de rechten op de map en eventueel de Forge-logs.
 

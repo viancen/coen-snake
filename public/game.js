@@ -12,7 +12,9 @@
   const playerNameInput = document.getElementById('playerName');
 
   const CELL = 20;
-  const BASE_SPEED = 120;
+  const BASE_SPEED = 140;  // ms per snake move (higher = slower)
+const SPEED_PER_POINT = 0.6;  // less aggressive speed-up (was 2)
+const MIN_TICK_MS = 90;  // minimum ms per move (was 60, now slightly slower cap)
   const MOHAWK_SPIKES = 5;
   const MOHAWK_COLOR = '#e63946';
   const HEAD_COLOR = '#2a9d8f';
@@ -64,6 +66,29 @@
   let bgImagesLevel2 = [];
   let currentLevel2Bg = null;
   let currentLevel2BgImage = null;
+
+  // Game mode: 'snake' | 'invaders' (level 3)
+  let gameMode = 'snake';
+  const INVADER_COLS = 11;
+  const INVADER_ROWS = 5;
+  const INVADER_W = 36;
+  const INVADER_H = 24;
+  const INVADER_GAP = 8;
+  const PLAYER_W = 48;
+  const PLAYER_H = 24;
+  const PLAYER_Y_OFFSET = 60;
+  const BULLET_SPEED = 14;
+  const INVADER_SPEED = 2;
+  const INVADER_DROP = 20;
+  const INVADER_POINTS = 10;
+  const INVADER_TICK_MS = 90;
+  let playerX = 0;
+  let bullets = [];
+  let invaders = [];
+  let invaderDir = 1;
+  let invaderLastTick = 0;
+  let invaderMinX = 0;
+  let invaderMaxX = 0;
 
   function loadImages(cb) {
     const img1 = new Image();
@@ -192,13 +217,30 @@
     currentLevel2BgImage = currentLevel2Bg ? currentLevel2Bg.img : null;
   }
 
+  function drawImageCover(img) {
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    const cw = canvas.width;
+    const ch = canvas.height;
+    const scale = Math.max(cw / iw, ch / ih);
+    const dw = iw * scale;
+    const dh = ih * scale;
+    const dx = (cw - dw) / 2;
+    const dy = (ch - dh) / 2;
+    ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
+  }
+
   function drawBackground() {
     if (level === 1 && bgImageLevel1) {
-      ctx.drawImage(bgImageLevel1, 0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0d1117';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawImageCover(bgImageLevel1);
       return;
     }
     if (level >= 2 && currentLevel2BgImage) {
-      ctx.drawImage(currentLevel2BgImage, 0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0d1117';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawImageCover(currentLevel2BgImage);
       return;
     }
     ctx.fillStyle = '#0d1117';
@@ -278,6 +320,106 @@
     return lvl;
   }
 
+  function initInvaders() {
+    playerX = (canvas.width - PLAYER_W) / 2;
+    bullets = [];
+    invaders = [];
+    invaderDir = 1;
+    invaderLastTick = 0;
+    const startX = (canvas.width - (INVADER_COLS * (INVADER_W + INVADER_GAP) - INVADER_GAP)) / 2;
+    const startY = 80;
+    for (let row = 0; row < INVADER_ROWS; row++) {
+      for (let col = 0; col < INVADER_COLS; col++) {
+        invaders.push({
+          x: startX + col * (INVADER_W + INVADER_GAP),
+          y: startY + row * (INVADER_H + INVADER_GAP),
+          alive: true,
+        });
+      }
+    }
+  }
+
+  function getInvaderBounds() {
+    let minX = 1e9, maxX = -1e9;
+    invaders.forEach((inv) => {
+      if (!inv.alive) return;
+      minX = Math.min(minX, inv.x);
+      maxX = Math.max(maxX, inv.x + INVADER_W);
+    });
+    return { minX, maxX };
+  }
+
+  function tickInvaders(now) {
+    const elapsed = now - invaderLastTick;
+    if (elapsed >= INVADER_TICK_MS) {
+      invaderLastTick = now;
+      const { minX, maxX } = getInvaderBounds();
+      if (minX <= 0 || maxX >= canvas.width) {
+        invaderDir *= -1;
+        invaders.forEach((inv) => {
+          if (inv.alive) inv.y += INVADER_DROP;
+        });
+      } else {
+        invaders.forEach((inv) => {
+          if (inv.alive) inv.x += INVADER_SPEED * invaderDir;
+        });
+      }
+    }
+    bullets.forEach((b) => (b.y -= BULLET_SPEED));
+    bullets = bullets.filter((b) => b.y > 0);
+    bullets.forEach((bullet) => {
+      invaders.forEach((inv) => {
+        if (!inv.alive) return;
+        if (bullet.x >= inv.x && bullet.x <= inv.x + INVADER_W &&
+            bullet.y >= inv.y && bullet.y <= inv.y + INVADER_H) {
+          inv.alive = false;
+          bullet.dead = true;
+          score += INVADER_POINTS;
+          scoreEl.textContent = score;
+          if (score > highScore) {
+            highScore = score;
+            highScoreEl.textContent = highScore;
+          }
+        }
+      });
+    });
+    bullets = bullets.filter((b) => !b.dead);
+    const aliveCount = invaders.filter((inv) => inv.alive).length;
+    if (aliveCount === 0) {
+      initInvaders();
+      return;
+    }
+    const playerY = canvas.height - PLAYER_Y_OFFSET;
+    invaders.forEach((inv) => {
+      if (!inv.alive) return;
+      if (inv.y + INVADER_H >= playerY &&
+          inv.x + INVADER_W >= playerX && inv.x <= playerX + PLAYER_W) {
+        gameOver();
+      }
+      if (inv.y + INVADER_H >= canvas.height) gameOver();
+    });
+  }
+
+  function drawInvaders() {
+    const playerY = canvas.height - PLAYER_Y_OFFSET;
+    ctx.fillStyle = '#2a9d8f';
+    ctx.fillRect(playerX, playerY, PLAYER_W, PLAYER_H);
+    ctx.fillStyle = '#e63946';
+    ctx.fillRect(playerX + PLAYER_W / 2 - 4, playerY - 8, 8, 8);
+    bullets.forEach((b) => {
+      ctx.fillStyle = '#f4a261';
+      ctx.fillRect(b.x - 2, b.y - 8, 4, 12);
+    });
+    invaders.forEach((inv) => {
+      if (!inv.alive) return;
+      ctx.fillStyle = '#9b59b6';
+      ctx.fillRect(inv.x, inv.y, INVADER_W, INVADER_H);
+      ctx.strokeStyle = '#7d3c98';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(inv.x, inv.y, INVADER_W, INVADER_H);
+    });
+  }
+
   function switchToLevel(newLevel) {
     level = newLevel;
     if (levelEl) levelEl.textContent = String(level);
@@ -286,16 +428,29 @@
     canvas.height = cfg.h;
     COLS = Math.floor(cfg.w / CELL);
     ROWS = Math.floor(cfg.h / CELL);
-    initSnake();
-    placeFoods();
-    if (level >= 2) pickRandomLevel2Bg();
+    if (level === 3) {
+      gameMode = 'invaders';
+      initInvaders();
+      if (level >= 2) pickRandomLevel2Bg();
+    } else {
+      gameMode = 'snake';
+      initSnake();
+      placeFoods();
+      if (level >= 2) pickRandomLevel2Bg();
+    }
   }
 
   function tick(now) {
     if (!running) return;
+    if (gameMode === 'invaders') {
+      tickInvaders(now);
+      draw();
+      gameLoopId = requestAnimationFrame(tick);
+      return;
+    }
     if (!lastTick) lastTick = now;
     const elapsed = now - lastTick;
-    const speed = Math.max(60, BASE_SPEED - score * 2);
+    const speed = Math.max(MIN_TICK_MS, BASE_SPEED - score * SPEED_PER_POINT);
     if (elapsed < speed) {
       gameLoopId = requestAnimationFrame(tick);
       return;
@@ -346,8 +501,12 @@
 
   function draw() {
     drawBackground();
-    drawFoods();
-    drawSnake();
+    if (gameMode === 'invaders') {
+      drawInvaders();
+    } else {
+      drawFoods();
+      drawSnake();
+    }
   }
 
   function showOverlay(title, message, showButton) {
@@ -400,6 +559,7 @@
 
   function start() {
     level = 1;
+    gameMode = 'snake';
     if (levelEl) levelEl.textContent = '1';
     const cfg = getLevelConfig(1);
     canvas.width = cfg.w;
@@ -424,12 +584,40 @@
   canvas.addEventListener('mousemove', e => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
+    if (gameMode === 'invaders' && running) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const x = (e.clientX - rect.left) * scaleX;
+      playerX = Math.max(0, Math.min(canvas.width - PLAYER_W, x - PLAYER_W / 2));
+    }
     useKeyboard = false;
   });
 
   document.addEventListener('keydown', e => {
+    if (!running) return;
+    if (gameMode === 'invaders') {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        bullets.push({
+          x: playerX + PLAYER_W / 2,
+          y: canvas.height - PLAYER_Y_OFFSET - 8,
+        });
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        playerX = Math.max(0, playerX - 20);
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        playerX = Math.min(canvas.width - PLAYER_W, playerX + 20);
+        return;
+      }
+      return;
+    }
     const keyDir = ARROW_KEYS[e.key];
-    if (!keyDir || !running) return;
+    if (!keyDir) return;
     e.preventDefault();
     useKeyboard = true;
     const head = snake[0];
@@ -443,10 +631,18 @@
   });
 
   canvas.addEventListener('click', e => {
-    if (overlay.classList.contains('hidden')) return;
-    const rect = canvas.getBoundingClientRect();
-    if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-      start();
+    if (!overlay.classList.contains('hidden')) {
+      const rect = canvas.getBoundingClientRect();
+      if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        start();
+      }
+      return;
+    }
+    if (gameMode === 'invaders' && running) {
+      bullets.push({
+        x: playerX + PLAYER_W / 2,
+        y: canvas.height - PLAYER_Y_OFFSET - 8,
+      });
     }
   });
 
